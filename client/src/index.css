@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Rajdhani:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────── */
+:root {
+  --bg:        #050810;
+  --bg-panel:  #080d1a;
+  --bg-card:   #0b1020;
+  --bg-input:  #111827;
+  --cyan:      #00d4ff;
+  --cyan-dim:  rgba(0,212,255,0.22);
+  --cyan-glow: rgba(0,212,255,0.12);
+  --mag:       #ff2d78;
+  --mag-dim:   rgba(255,45,120,0.22);
+  --mag-glow:  rgba(255,45,120,0.12);
+  --green:     #00ff88;
+  --green-dim: rgba(0,255,136,0.14);
+  --warn:      #ffbb00;
+  --tx:        #dde6f0;
+  --tx2:       #7a90a8;
+  --tx3:       #3a4a5a;
+  --border:    rgba(0,212,255,0.11);
+  --step1:     #6366f1;
+  --step2:     #06b6d4;
+  --step3:     #f59e0b;
+  --step4:     #10b981;
+}
+
+/* ── Base ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: 'JetBrains Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+#root { min-height: 100vh; }
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+/* ── Scanline overlay ──────────────────────────────────── */
+.scanlines {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.055) 3px, rgba(0,0,0,0.055) 4px
+  );
+}
+
+/* ── HUD corner-bracket panel ──────────────────────────── */
+.hud {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  position: relative;
+}
+.hud::before {
+  content:''; position:absolute; top:-1px; left:-1px;
+  width:12px; height:12px;
+  border-top:2px solid var(--cyan); border-left:2px solid var(--cyan);
+}
+.hud::after {
+  content:''; position:absolute; bottom:-1px; right:-1px;
+  width:12px; height:12px;
+  border-bottom:2px solid var(--cyan); border-right:2px solid var(--cyan);
+}
+.hud.mag::before, .hud.mag::after { border-color: var(--mag); }
+.hud.green::before, .hud.green::after { border-color: var(--green); }
+
+/* ── Panel label ───────────────────────────────────────── */
+.panel-tag {
+  font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 1rem;
+}
+.panel-tag::before { content: '▶ '; }
+
+/* ── Clip-path button ──────────────────────────────────── */
+.btn-clip {
+  clip-path: polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+}
+
+/* ── Glow pulse animation ──────────────────────────────── */
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 8px var(--cyan-dim); }
+  50%      { box-shadow: 0 0 22px var(--cyan-dim); }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-6px); }
+  40%,80% { transform: translateX(6px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+/* ── Vault Door animations ──────────────────────────────── */
+@keyframes dial-spin {
+  0%   { transform: translate(-50%,-50%) rotate(0deg); }
+  100% { transform: translate(-50%,-50%) rotate(720deg); }
+}
+@keyframes bolt-retract-top    { to { transform: translateX(-50%) translateY(-160%); opacity:0; } }
+@keyframes bolt-retract-bottom { to { transform: translateX(-50%) translateY(160%);  opacity:0; } }
+@keyframes bolt-retract-left   { to { transform: translateY(-50%) translateX(-160%); opacity:0; } }
+@keyframes bolt-retract-right  { to { transform: translateY(-50%) translateX(160%);  opacity:0; } }
+@keyframes door-slide-open     { to { transform: translateX(-105%); } }
+@keyframes vault-glow-in {
+  0%   { opacity:0; transform: scale(0.85); }
+  60%  { opacity:1; transform: scale(1.04); }
+  100% { opacity:1; transform: scale(1); }
+}
+@keyframes vault-fail-flash {
+  0%,100% { box-shadow: inset 0 0 30px rgba(255,45,120,0.1); }
+  50%      { box-shadow: inset 0 0 60px rgba(255,45,120,0.45); }
+}
+@keyframes spark {
+  0%   { opacity:1; transform: scale(1) translateY(0); }
+  100% { opacity:0; transform: scale(0.3) translateY(-20px); }
+}
+
+/* ── Mobile responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+  /* NavBar */
+  nav { padding: 0.65rem 1rem !important; }
+  nav ul { display: none !important; }          /* 링크 숨김 */
+
+  /* NavBar — 모바일 하단 탭바 표시 */
+  #mobile-tabs { display: flex !important; }
+
+  .mobile-tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    display: flex; background: rgba(5,8,16,0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0.5rem 0.25rem; gap: 0.2rem;
+    background: none; border: none; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--tx2); transition: color 0.2s;
+  }
+  .mobile-tab.active { color: var(--cyan); }
+
+  /* 하단 탭바 여백 */
+  main { padding-bottom: 4.5rem !important; }
+
+  /* PuzzleBoard — 사이드 패널 제거, 스택 레이아웃 */
+  .puzzle-layout { flex-direction: column !important; }
+  .puzzle-side   { width: 100% !important; }
+
+  /* 스텝 컴포넌트 폰트 축소 */
+  .step-formula  { font-size: 0.78rem !important; }
+
+  /* VaultSelector 2열 그리드 */
+  .vault-grid { grid-template-columns: repeat(2,1fr) !important; }
+
+  /* 모드 카드 1열 */
+  .mode-grid  { grid-template-columns: 1fr !important; }
+
+  /* 스킨 그리드 2열 */
+  .shop-skin-grid { grid-template-columns: repeat(2,1fr) !important; }
+
+  /* AgentCard 크기 축소 */
+  .agent-card-home { transform: scale(0.85); transform-origin: top center; }
+}

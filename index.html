@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KEY CRACK // RSA Decryption Battle</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Rajdhani:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* ─── Reset & Variables ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050810;
+      --bg-panel:  #080d1a;
+      --bg-card:   #0b1020;
+      --cyan:      #00d4ff;
+      --cyan-dim:  rgba(0,212,255,0.25);
+      --cyan-glow: rgba(0,212,255,0.15);
+      --mag:       #ff2d78;
+      --mag-dim:   rgba(255,45,120,0.25);
+      --mag-glow:  rgba(255,45,120,0.15);
+      --green:     #00ff88;
+      --green-dim: rgba(0,255,136,0.15);
+      --tx:        #dde6f0;
+      --tx2:       #7a90a8;
+      --tx3:       #3a4a5a;
+      --border:    rgba(0,212,255,0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'JetBrains Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+
+    /* ─── Scanlines overlay ──────────────────────────────── */
+    .scanlines {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 3px,
+        rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+      );
+    }
+
+    /* ─── Canvas background ──────────────────────────────── */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    /* ─── Shared z-index layer ───────────────────────────── */
+    nav, section, footer, #boot-overlay { position: relative; z-index: 2; }
+
+    /* ─── HUD corner-bracket panel ───────────────────────── */
+    .hud {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .hud::before { content:''; position:absolute; top:-1px; left:-1px; width:12px; height:12px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+    .hud::after  { content:''; position:absolute; bottom:-1px; right:-1px; width:12px; height:12px; border-bottom:2px solid var(--cyan); border-right:2px solid var(--cyan); }
+
+    .hud.mag::before, .hud.mag::after { border-color: var(--mag); }
+
+    .panel-tag {
+      font-size: .6rem; letter-spacing: .25em; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 1rem;
+    }
+    .panel-tag::before { content: '▶ '; }
+
+    /* ─── Buttons ─────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .85rem 2.2rem;
+      font-family: 'Rajdhani', sans-serif; font-size: .95rem;
+      font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+      cursor: pointer; border: none; transition: all .2s;
+      clip-path: polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    }
+    .btn-cyan  { background: var(--cyan); color: var(--bg); }
+    .btn-cyan:hover  { box-shadow: 0 0 28px var(--cyan-dim); transform: translateY(-2px); }
+    .btn-mag   { background: transparent; color: var(--mag); border: 1px solid var(--mag); }
+    .btn-mag:hover   { background: var(--mag); color: var(--bg); box-shadow: 0 0 28px var(--mag-dim); transform: translateY(-2px); }
+    .btn-ghost { background: transparent; color: var(--tx2); border: 1px solid var(--tx3); }
+    .btn-ghost:hover { border-color: var(--tx2); color: var(--tx); }
+
+    /* ─── BOOT OVERLAY ────────────────────────────────────── */
+    #boot-overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1.5rem;
+      transition: opacity .6s;
+    }
+    .boot-logo {
+      font-family: 'Rajdhani', sans-serif; font-size: 3.5rem;
+      font-weight: 700; letter-spacing: .5em;
+      color: var(--cyan); text-shadow: 0 0 40px var(--cyan-dim);
+    }
+    .boot-lines { width: 380px; display: flex; flex-direction: column; gap: .3rem; }
+    .boot-line  { font-size: .68rem; color: var(--tx3); opacity: 0; animation: fadein .3s forwards; }
+    .boot-line.ok  { color: var(--green); }
+    .boot-line.err { color: var(--mag); }
+    @keyframes fadein { to { opacity:1; transform:translateX(0); } from { opacity:0; transform:translateX(-6px); } }
+    .boot-bar { width: 380px; height: 2px; background: rgba(255,255,255,.05); }
+    .boot-fill { height: 100%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); width: 0; transition: width .12s; }
+
+    /* ─── NAVBAR ──────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .9rem 2.5rem;
+      background: rgba(5,8,16,.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: 'Rajdhani', sans-serif; font-size: 1.4rem;
+      font-weight: 700; letter-spacing: .3em; text-transform: uppercase;
+    }
+    .nav-logo .k { color: var(--cyan); text-shadow: 0 0 16px var(--cyan-dim); }
+    .nav-logo .c { color: var(--mag);  text-shadow: 0 0 16px var(--mag-dim);  }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      color: var(--tx2); text-decoration: none;
+      font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--cyan); }
+    .nav-login {
+      background: transparent; border: 1px solid var(--cyan);
+      color: var(--cyan); padding: .45rem 1.2rem;
+      font-family: 'JetBrains Mono', monospace; font-size: .7rem;
+      letter-spacing: .15em; text-transform: uppercase; cursor: pointer;
+      transition: all .2s;
+      clip-path: polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+    }
+    .nav-login:hover { background: var(--cyan); color: var(--bg); box-shadow: 0 0 16px var(--cyan-dim); }
+
+    /* ─── HERO ────────────────────────────────────────────── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 7rem 2rem 3rem;
+    }
+    .hero-sys {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .65rem; letter-spacing: .25em; text-transform: uppercase;
+      color: var(--green); margin-bottom: 1.5rem;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    .hero-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(4.5rem, 11vw, 9.5rem);
+      font-weight: 700; letter-spacing: .12em;
+      line-height: .92; text-transform: uppercase;
+      margin-bottom: .6rem;
+    }
+    .hero-title .K { color: var(--cyan); text-shadow: 0 0 50px rgba(0,212,255,.4), 0 0 100px rgba(0,212,255,.15); }
+    .hero-title .C { color: var(--mag);  text-shadow: 0 0 50px rgba(255,45,120,.4), 0 0 100px rgba(255,45,120,.15); }
+
+    .hero-sub {
+      font-family: 'Rajdhani', sans-serif; font-size: 1rem;
+      letter-spacing: .45em; text-transform: uppercase;
+      color: var(--tx2); margin-bottom: 1.2rem;
+    }
+
+    .hero-desc {
+      max-width: 520px; font-size: .78rem; color: var(--tx2);
+      line-height: 1.85; text-align: left; margin-bottom: 2.5rem;
+      border-left: 2px solid var(--cyan); padding-left: 1rem;
+    }
+    .hero-desc em { color: var(--green); font-style: normal; }
+
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 4rem; }
+
+    /* floating HUD chips */
+    .hero-chips {
+      display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;
+    }
+    .chip {
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: .6rem 1.2rem; text-align: center;
+    }
+    .chip-val {
+      font-family: 'Rajdhani', sans-serif; font-size: 2rem;
+      font-weight: 700; color: var(--cyan); display: block; line-height: 1;
+    }
+    .chip-lbl { font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: var(--tx3); }
+
+    .scroll-hint {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: .4rem;
+      color: var(--tx3); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase;
+      animation: bob 2s ease-in-out infinite;
+    }
+    .scroll-arrow { width:14px; height:14px; border-right:1px solid var(--cyan); border-bottom:1px solid var(--cyan); transform:rotate(45deg); }
+    @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-7px)} }
+
+    /* ─── SECTION HEADERS ─────────────────────────────────── */
+    .s-wrap { padding: 5rem 2rem; }
+    .s-head { text-align: center; margin-bottom: 3rem; }
+    .s-tag  { display: block; font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--cyan); margin-bottom: .5rem; }
+    .s-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .s-title span { color: var(--cyan); }
+    .s-title .m   { color: var(--mag); }
+
+    /* ─── OVERVIEW cards ──────────────────────────────────── */
+    .ov-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+      gap: 1.25rem; max-width: 1100px; margin: 0 auto;
+    }
+    .ov-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 1.5rem; transition: border-color .2s, box-shadow .2s;
+      position: relative;
+    }
+    .ov-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:linear-gradient(to bottom,var(--cyan),transparent); }
+    .ov-card:hover { border-color: rgba(0,212,255,.4); box-shadow: 0 0 22px var(--cyan-glow); }
+    .ov-icon { font-size: 2rem; margin-bottom: .75rem; }
+    .ov-title { font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--cyan); margin-bottom:.4rem; }
+    .ov-desc  { font-size:.74rem; color:var(--tx2); line-height:1.75; }
+
+    /* ─── MODE cards ──────────────────────────────────────── */
+    #modes { background: linear-gradient(to bottom,transparent,rgba(0,212,255,.02),transparent); }
+    .mode-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+      gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+    }
+    .mode-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 2rem; cursor: pointer; overflow: hidden;
+      position: relative; transition: all .3s;
+    }
+    .mode-card::after {
+      content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+      background:linear-gradient(90deg,transparent,rgba(0,212,255,.06),transparent);
+      transition: left .5s;
+    }
+    .mode-card:hover::after { left:100%; }
+    .mode-card:hover { border-color:var(--cyan); transform:translateY(-4px); box-shadow:0 8px 30px var(--cyan-glow); }
+    .mode-card.m:hover { border-color:var(--mag); box-shadow:0 8px 30px var(--mag-glow); }
+    .mode-card.g:hover { border-color:#ffd700; box-shadow:0 8px 30px rgba(255,215,0,.15); }
+
+    .mode-badge {
+      display:inline-block; font-size:.58rem; letter-spacing:.2em; text-transform:uppercase;
+      padding:.18rem .55rem; border:1px solid var(--cyan); color:var(--cyan); margin-bottom:1.5rem;
+    }
+    .mode-card.m .mode-badge { border-color:var(--mag); color:var(--mag); }
+    .mode-card.g .mode-badge { border-color:#ffd700; color:#ffd700; }
+
+    .mode-icon { font-size: 2.8rem; margin-bottom: .85rem; display: block; }
+    .mode-title { font-family:'Rajdhani',sans-serif; font-size:1.35rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:.5rem; }
+    .mode-desc  { font-size:.74rem; color:var(--tx2); line-height:1.75; margin-bottom:1.25rem; }
+    .mode-tags  { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .tag {
+      font-size:.58rem; letter-spacing:.1em; text-transform:uppercase;
+      padding:.15rem .5rem; background:rgba(0,212,255,.07); border:1px solid rgba(0,212,255,.2); color:var(--cyan);
+    }
+    .mode-card.m .tag { background:rgba(255,45,120,.07); border-color:rgba(255,45,120,.2); color:var(--mag); }
+    .mode-card.g .tag { background:rgba(255,215,0,.07); border-color:rgba(255,215,0,.2); color:#ffd700; }
+
+    /* ─── HOW-TO-PLAY ─────────────────────────────────────── */
+    #how-to { background: linear-gradient(to bottom,transparent,rgba(255,45,120,.02),transparent); }
+    .steps  { max-width:880px; margin:0 auto; position:relative; }
+    .steps-vline {
+      position:absolute; left:2.35rem; top:0; bottom:0; width:1px;
+      background:linear-gradient(to bottom,var(--cyan),var(--mag)); opacity:.2;
+    }
+    .step { display:flex; gap:1.75rem; margin-bottom:1.75rem; }
+    .step-num {
+      flex-shrink:0; width:4.7rem; height:4.7rem;
+      border:1px solid var(--cyan); color:var(--cyan);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Rajdhani',sans-serif; font-size:1.8rem; font-weight:700;
+      background:var(--bg); position:relative; z-index:1;
+    }
+    .step:nth-child(even) .step-num { border-color:var(--mag); color:var(--mag); }
+    .step-body {
+      flex:1; padding:1.25rem; background:var(--bg-card);
+      border:1px solid var(--border); position:relative;
+    }
+    .step-body::before { content:''; position:absolute; left:0; top:0; width:3px; height:100%; background:var(--cyan); }
+    .step:nth-child(even) .step-body::before { background:var(--mag); }
+    .step-name {
+      font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:700;
+      letter-spacing:.15em; text-transform:uppercase; color:var(--cyan); margin-bottom:.35rem;
+    }
+    .step:nth-child(even) .step-name { color:var(--mag); }
+    .step-formula {
+      font-size:.88rem; color:var(--green);
+      background:rgba(0,255,136,.05); border-left:2px solid var(--green);
+      padding:.35rem .75rem; margin:.45rem 0; font-style:italic;
+    }
+    .step-desc { font-size:.73rem; color:var(--tx2); line-height:1.75; }
+
+    /* ─── LEADERBOARD ─────────────────────────────────────── */
+    .lb-wrap { max-width:700px; margin:0 auto; }
+    .lb-table { width:100%; border-collapse:collapse; }
+    .lb-table thead th {
+      text-align:left; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase;
+      color:var(--tx3); padding:.5rem .75rem; border-bottom:1px solid var(--border);
+    }
+    .lb-table tbody tr { border-bottom:1px solid rgba(255,255,255,.03); transition:background .2s; }
+    .lb-table tbody tr:hover { background:rgba(0,212,255,.04); }
+    .lb-table tbody td { padding:.7rem .75rem; font-size:.78rem; }
+    .rk { color:var(--tx3); font-size:.68rem; width:3rem; }
+    .rk1 { color:#ffd700; font-weight:700; font-size:.85rem; }
+    .rk2 { color:#c0c0c0; font-weight:700; }
+    .rk3 { color:#cd7f32; font-weight:700; }
+    .pname { color:var(--tx); font-weight:600; }
+    .pscore { color:var(--cyan); }
+    .pbadge { font-size:.58rem; letter-spacing:.1em; padding:.12rem .4rem; border:1px solid; }
+    .bg-gold { border-color:#ffd700; color:#ffd700; }
+    .bg-plat { border-color:#e5e4e2; color:#e5e4e2; }
+    .bg-cyan { border-color:var(--cyan); color:var(--cyan); }
+    .bg-mag  { border-color:var(--mag);  color:var(--mag);  }
+
+    /* ─── LOGIN SECTION ───────────────────────────────────── */
+    #login-section { text-align: center; }
+    .login-box {
+      max-width: 440px; margin: 0 auto;
+      background: var(--bg-panel); border: 1px solid var(--border);
+      padding: 2.5rem; position: relative;
+    }
+    .login-box::before {
+      content: 'AUTHENTICATION REQUIRED';
+      position:absolute; top:-.55rem; left:50%; transform:translateX(-50%);
+      background:var(--bg-panel); padding:0 .75rem;
+      font-size:.58rem; letter-spacing:.25em; text-transform:uppercase; color:var(--cyan);
+    }
+    .login-box::after {
+      content:''; position:absolute; bottom:-1px; left:-1px; width:14px; height:14px;
+      border-bottom:2px solid var(--mag); border-left:2px solid var(--mag);
+    }
+    .login-title {
+      font-family:'Rajdhani',sans-serif; font-size:1.5rem; font-weight:700;
+      letter-spacing:.1em; text-transform:uppercase; margin-bottom:.4rem;
+    }
+    .login-desc { font-size:.73rem; color:var(--tx2); line-height:1.65; margin-bottom:2rem; }
+
+    .social-btn {
+      width:100%; display:flex; align-items:center; justify-content:center; gap:.75rem;
+      padding:.85rem 1.5rem; font-family:'JetBrains Mono',monospace; font-size:.77rem;
+      letter-spacing:.1em; cursor:pointer; border:1px solid; background:transparent;
+      color:var(--tx); transition:all .2s; margin-bottom:.7rem;
+    }
+    .sb-google { border-color:rgba(255,255,255,.18); }
+    .sb-google:hover { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.35); }
+    .sb-github { border-color:rgba(100,120,140,.35); }
+    .sb-github:hover { background:rgba(100,120,140,.1); border-color:rgba(100,120,140,.7); }
+    .social-btn svg { width:18px; height:18px; flex-shrink:0; }
+
+    .divider {
+      display:flex; align-items:center; gap:1rem; margin:1.2rem 0;
+      color:var(--tx3); font-size:.62rem; letter-spacing:.15em;
+    }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .guest-btn {
+      width:100%; background:transparent;
+      border:1px solid rgba(0,255,136,.25); color:var(--green);
+      padding:.75rem; font-family:'JetBrains Mono',monospace; font-size:.73rem;
+      letter-spacing:.1em; cursor:pointer; transition:all .2s;
+    }
+    .guest-btn:hover { background:rgba(0,255,136,.07); border-color:var(--green); }
+    .login-note { font-size:.62rem; color:var(--tx3); margin-top:1.5rem; line-height:1.65; }
+
+    /* ─── FOOTER ──────────────────────────────────────────── */
+    footer {
+      padding:2rem; text-align:center; border-top:1px solid var(--border);
+      color:var(--tx3); font-size:.62rem; letter-spacing:.12em;
+    }
+    footer span { color:var(--cyan); }
+
+    /* ─── MODAL ───────────────────────────────────────────── */
+    #modal-overlay {
+      position:fixed; inset:0; z-index:500;
+      background:rgba(5,8,16,.92); backdrop-filter:blur(8px);
+      display:none; align-items:center; justify-content:center;
+    }
+    #modal-overlay.show { display:flex; }
+    .modal-box {
+      background:var(--bg-panel); border:1px solid rgba(0,212,255,.3);
+      padding:2.5rem; width:min(460px,92vw); position:relative;
+    }
+    .modal-box::before { content:''; position:absolute; top:-1px; left:-1px; width:14px; height:14px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+    .modal-box::after  { content:''; position:absolute; bottom:-1px; right:-1px; width:14px; height:14px; border-bottom:2px solid var(--mag); border-right:2px solid var(--mag); }
+    .modal-close {
+      position:absolute; top:.75rem; right:.75rem;
+      background:transparent; border:none; color:var(--tx3); font-size:1.2rem; cursor:pointer;
+      transition:color .2s;
+    }
+    .modal-close:hover { color:var(--tx); }
+
+    /* ─── Responsive ──────────────────────────────────────── */
+    @media(max-width:768px){
+      .nav-links { display:none; }
+      .hero-chips { gap:1rem; }
+      .steps-vline { display:none; }
+      .step { flex-direction:column; gap:.75rem; }
+      .step-num { width:100%; height:3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Scanlines + Canvas ──────────────────────────────────── -->
+<div class="scanlines"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- ── Boot Overlay ───────────────────────────────────────── -->
+<div id="boot-overlay">
+  <div class="boot-logo">KEY CRACK</div>
+  <div class="boot-lines" id="boot-lines"></div>
+  <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+</div>
+
+<!-- ── Nav ────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-logo"><span class="k">KEY</span>&nbsp;<span class="c">CRACK</span></div>
+  <ul class="nav-links">
+    <li><a href="#overview">게임 소개</a></li>
+    <li><a href="#modes">모드</a></li>
+    <li><a href="#how-to">플레이 방법</a></li>
+    <li><a href="#leaderboard">랭킹</a></li>
+  </ul>
+  <button class="nav-login" onclick="openModal()">로그인 / 시작</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-sys">
+    <div class="dot"></div>
+    SYSTEM ONLINE — ENCRYPTION BREACH PROTOCOL READY
+  </div>
+
+  <h1 class="hero-title">
+    <span class="K">KEY</span><br>
+    <span class="C">CRACK</span>
+  </h1>
+
+  <p class="hero-sub">// RSA Decryption Battle //</p>
+
+  <p class="hero-desc">
+    적의 암호 통신을 해독하라.<br>
+    <em>RSA 공개키 암호</em>의 수학적 원리를 이용해 소인수분해 → 오일러 φ(n) 계산 →
+    모듈러 역원 → 복호화까지 <em>4단계 해독 퍼즐</em>을 풀어내는 사이버 인텔리전스 배틀 게임.
+  </p>
+
+  <div class="hero-btns">
+    <button class="btn btn-cyan" onclick="openModal()">▶ MISSION START</button>
+    <button class="btn btn-mag" onclick="document.getElementById('overview').scrollIntoView({behavior:'smooth'})">LEARN MORE</button>
+  </div>
+
+  <div class="hero-chips">
+    <div class="chip"><span class="chip-val">20</span><span class="chip-lbl">스테이지</span></div>
+    <div class="chip"><span class="chip-val">3</span><span class="chip-lbl">게임 모드</span></div>
+    <div class="chip"><span class="chip-val">5</span><span class="chip-lbl">난이도</span></div>
+    <div class="chip"><span class="chip-val">실시간</span><span class="chip-lbl">배틀 PvP</span></div>
+  </div>
+
+  <div class="scroll-hint">
+    <div class="scroll-arrow"></div>
+    SCROLL DOWN
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     OVERVIEW
+══════════════════════════════════════════════════════════════ -->
+<section id="overview" class="s-wrap">
+  <div class="s-head">
+    <span class="s-tag">// 01 — INTEL BRIEF</span>
+    <h2 class="s-title">KEY CRACK <span>이란?</span></h2>
+  </div>
+
+  <div class="ov-grid">
+    <div class="ov-card">
+      <div class="ov-icon">🔐</div>
+      <div class="ov-title">RSA 암호 해독</div>
+      <div class="ov-desc">
+        실제 RSA 암호화 원리를 기반으로 한 수학 퍼즐. 소수(Prime)의 곱 n을
+        인수분해하고 오일러 피 함수, 모듈러 역원을 계산해 암호문을 복호화한다.
+      </div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-icon">⚡</div>
+      <div class="ov-title">실시간 배틀</div>
+      <div class="ov-desc">
+        전 세계 플레이어와 Socket.io 기반 실시간 PvP. 상대방보다 빠르게 암호를
+        해독하고 방해 스킬을 사용해 승리를 쟁취하라. ELO 레이팅 시스템 적용.
+      </div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-icon">🏆</div>
+      <div class="ov-title">랭킹 & 보상</div>
+      <div class="ov-desc">
+        스테이지 클리어 및 배틀 승리로 코인을 획득. 난이도별 배지를 수집하고
+        글로벌 리더보드에서 최고 요원의 자리를 차지하라.
+      </div>
+    </div>
+    <div class="ov-card">
+      <div class="ov-icon">📐</div>
+      <div class="ov-title">수학 학습</div>
+      <div class="ov-desc">
+        게임을 통해 자연스럽게 RSA 암호학 원리를 습득. 인터랙티브 RSA 학습
+        페이지에서 슬라이더로 p·q를 조작하며 암호화 과정을 실시간 체험.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODES
+══════════════════════════════════════════════════════════════ -->
+<section id="modes" class="s-wrap">
+  <div class="s-head">
+    <span class="s-tag">// 02 — OPERATION MODES</span>
+    <h2 class="s-title">게임 <span>모드</span></h2>
+  </div>
+
+  <div class="mode-grid">
+    <!-- Stage -->
+    <div class="mode-card">
+      <span class="mode-badge">SINGLE PLAYER</span>
+      <span class="mode-icon">🗂️</span>
+      <div class="mode-title">Stage Mode</div>
+      <div class="mode-desc">
+        20개의 스토리 기반 스테이지를 순서대로 클리어. Beginner부터 Expert까지
+        점진적으로 증가하는 난이도와 타이머 압박. 스테이지 완료 시 코인·배지 획득.
+      </div>
+      <div class="mode-tags">
+        <span class="tag">20 스테이지</span>
+        <span class="tag">스토리</span>
+        <span class="tag">힌트 시스템</span>
+        <span class="tag">배지 보상</span>
+      </div>
+    </div>
+
+    <!-- Vault -->
+    <div class="mode-card g">
+      <span class="mode-badge gold">CHALLENGE</span>
+      <span class="mode-icon">🔒</span>
+      <div class="mode-title">Vault Mode</div>
+      <div class="mode-desc">
+        Bronze → Platinum 4단계 금고 해독 챌린지. 등급이 높을수록 더 큰 소수,
+        더 짧은 제한 시간, 더 적은 힌트. Platinum은 이중 RSA 연쇄 해독.
+      </div>
+      <div class="mode-tags">
+        <span class="tag" style="border-color:#cd7f32;color:#cd7f32;background:rgba(205,127,50,.07)">Bronze</span>
+        <span class="tag" style="border-color:#c0c0c0;color:#c0c0c0;background:rgba(192,192,192,.07)">Silver</span>
+        <span class="tag" style="border-color:#ffd700;color:#ffd700;background:rgba(255,215,0,.07)">Gold</span>
+        <span class="tag" style="border-color:#e5e4e2;color:#e5e4e2;background:rgba(229,228,226,.07)">Platinum</span>
+      </div>
+    </div>
+
+    <!-- Battle -->
+    <div class="mode-card m">
+      <span class="mode-badge">PvP MULTIPLAYER</span>
+      <span class="mode-icon">⚔️</span>
+      <div class="mode-title">Battle Mode</div>
+      <div class="mode-desc">
+        1 vs 1 실시간 배틀. 5라운드 동안 같은 문제를 더 빠르게 해독하는 자가 승리.
+        가짜 힌트 전송, 상대 시간 삭감, 방어막 등 4종 스킬로 전략적 승부.
+      </div>
+      <div class="mode-tags">
+        <span class="tag">실시간 PvP</span>
+        <span class="tag">5라운드</span>
+        <span class="tag">스킬 시스템</span>
+        <span class="tag">ELO 레이팅</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HOW TO PLAY
+══════════════════════════════════════════════════════════════ -->
+<section id="how-to" class="s-wrap">
+  <div class="s-head">
+    <span class="s-tag">// 03 — DECRYPTION PROTOCOL</span>
+    <h2 class="s-title">플레이 <span>방법</span></h2>
+  </div>
+
+  <div class="steps">
+    <div class="steps-vline"></div>
+
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-body">
+        <div class="step-name">소인수분해 — Factorization</div>
+        <div class="step-formula">n = p × q &nbsp;(p, q는 소수)</div>
+        <div class="step-desc">
+          공개키 n을 두 소수의 곱으로 분해한다. 난이도에 따라 소수 참조 테이블,
+          힌트, 또는 자유 입력 중 하나의 방식으로 진행. RSA 보안의 핵심은
+          큰 n의 소인수분해가 매우 어렵다는 것이다.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-body">
+        <div class="step-name">오일러 피 함수 — Euler's φ(n)</div>
+        <div class="step-formula">φ(n) = (p − 1) × (q − 1)</div>
+        <div class="step-desc">
+          Step 1에서 구한 p, q로 오일러 토션트 함수를 계산. 이 값은 개인키 d를
+          구하는 데 필수적이며 n보다 작은 수 중 n과 서로소인 수의 개수를 나타낸다.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-body">
+        <div class="step-name">개인키 계산 — Private Key d</div>
+        <div class="step-formula">e × d ≡ 1 (mod φ(n))</div>
+        <div class="step-desc">
+          확장 유클리드 알고리즘으로 모듈러 역원 d를 찾는다. 난이도에 따라
+          3지 / 5지 선택, 또는 직접 계산 입력. d가 개인키의 핵심이다.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-body">
+        <div class="step-name">복호화 — Decrypt</div>
+        <div class="step-formula">m ≡ c<sup>d</sup> (mod n)</div>
+        <div class="step-desc">
+          암호문 c를 개인키 d로 모듈러 거듭제곱하여 원래 메시지 m을 복원.
+          인게임 BigInt 계산기를 활용 가능. 정답 제출 즉시 채점 및 결과 공개.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LEADERBOARD
+══════════════════════════════════════════════════════════════ -->
+<section id="leaderboard" class="s-wrap">
+  <div class="s-head">
+    <span class="s-tag">// 04 — GLOBAL RANKING</span>
+    <h2 class="s-title">글로벌 <span class="m">리더보드</span></h2>
+  </div>
+
+  <div class="lb-wrap hud" style="padding:1.5rem">
+    <div class="panel-tag">TOP AGENTS — BATTLE MODE</div>
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>RANK</th><th>AGENT</th><th>RATING</th><th>WINS</th><th>BADGE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="rk rk1">🥇 1</td>
+          <td class="pname">GH0ST_7</td>
+          <td class="pscore">2,847</td>
+          <td style="color:var(--tx2)">341</td>
+          <td><span class="pbadge bg-gold">PLATINUM</span></td>
+        </tr>
+        <tr>
+          <td class="rk rk2">🥈 2</td>
+          <td class="pname">W1SP3R</td>
+          <td class="pscore">2,631</td>
+          <td style="color:var(--tx2)">298</td>
+          <td><span class="pbadge bg-plat">PLATINUM</span></td>
+        </tr>
+        <tr>
+          <td class="rk rk3">🥉 3</td>
+          <td class="pname">N0V4_X</td>
+          <td class="pscore">2,419</td>
+          <td style="color:var(--tx2)">272</td>
+          <td><span class="pbadge bg-cyan">GOLD</span></td>
+        </tr>
+        <tr>
+          <td class="rk">4</td>
+          <td class="pname">C1PHER∆</td>
+          <td class="pscore">2,204</td>
+          <td style="color:var(--tx2)">251</td>
+          <td><span class="pbadge bg-cyan">GOLD</span></td>
+        </tr>
+        <tr>
+          <td class="rk">5</td>
+          <td class="pname">SCARLET</td>
+          <td class="pscore">1,988</td>
+          <td style="color:var(--tx2)">219</td>
+          <td><span class="pbadge bg-mag">SILVER</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN
+══════════════════════════════════════════════════════════════ -->
+<section id="login-section" class="s-wrap">
+  <div class="s-head">
+    <span class="s-tag">// 05 — ACCESS TERMINAL</span>
+    <h2 class="s-title">지금 <span>시작하기</span></h2>
+  </div>
+
+  <div class="login-box">
+    <div class="login-title">요원 인증</div>
+    <p class="login-desc">
+      소셜 계정으로 로그인하면 랭킹, 코인, 배지가 저장됩니다.<br>
+      게스트 모드는 저장 없이 즉시 플레이 가능.
+    </p>
+
+    <button class="social-btn sb-google" onclick="loginWith('google')">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Google로 계속하기
+    </button>
+
+    <button class="social-btn sb-github" onclick="loginWith('github')">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+      </svg>
+      GitHub로 계속하기
+    </button>
+
+    <div class="divider">OR</div>
+
+    <button class="guest-btn" onclick="loginWith('guest')">
+      👤 &nbsp; 게스트로 플레이 (저장 없음)
+    </button>
+
+    <p class="login-note">
+      로그인 시 이용약관 및 개인정보처리방침에 동의합니다.<br>
+      소셜 계정 외 별도 비밀번호 저장 없음 (Firebase Auth)
+    </p>
+  </div>
+</section>
+
+<!-- ─── Footer ─────────────────────────────────────────────── -->
+<footer>
+  <span>KEY CRACK</span> &nbsp;// RSA DECRYPTION BATTLE &nbsp;|&nbsp;
+  v0.2-vibe &nbsp;|&nbsp; 2026 &nbsp;|&nbsp;
+  Powered by <span>React + Socket.io + Firebase</span>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN MODAL
+══════════════════════════════════════════════════════════════ -->
+<div id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div style="text-align:center">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:700;letter-spacing:.2em;margin-bottom:.3rem;">
+        <span style="color:var(--cyan)">KEY</span> <span style="color:var(--mag)">CRACK</span>
+      </div>
+      <div style="font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--tx3);margin-bottom:1.8rem">
+        AUTHENTICATION TERMINAL
+      </div>
+
+      <button class="social-btn sb-google" onclick="loginWith('google')">
+        <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Google로 계속하기
+      </button>
+
+      <button class="social-btn sb-github" onclick="loginWith('github')">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        GitHub로 계속하기
+      </button>
+
+      <div class="divider">OR</div>
+      <button class="guest-btn" onclick="loginWith('guest')">👤 &nbsp; 게스트로 즉시 플레이</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════ -->
+<script>
+/* ── Boot sequence ─────────────────────────────────────────── */
+const bootMsgs = [
+  { t: '[ SYS ]  KEY CRACK v0.2 초기화 중...', cls: '' },
+  { t: '[ RSA ]  암호화 모듈 로드 완료', cls: 'ok' },
+  { t: '[ NET ]  Socket.io 서버 연결 확인 중...', cls: '' },
+  { t: '[ DB  ]  Firebase Firestore 연결됨', cls: 'ok' },
+  { t: '[ AUTH]  인증 서비스 대기 중', cls: 'ok' },
+  { t: '[ MAP ]  글로벌 플레이어 데이터 수신 중...', cls: '' },
+  { t: '[ OK  ]  모든 시스템 정상 — MISSION READY', cls: 'ok' },
+];
+
+(function runBoot() {
+  const overlay = document.getElementById('boot-overlay');
+  const lines   = document.getElementById('boot-lines');
+  const fill    = document.getElementById('boot-fill');
+  let i = 0;
+
+  function step() {
+    if (i >= bootMsgs.length) {
+      fill.style.width = '100%';
+      setTimeout(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 600);
+      }, 400);
+      return;
+    }
+    const m = bootMsgs[i];
+    const el = document.createElement('div');
+    el.className = 'boot-line ' + m.cls;
+    el.textContent = m.t;
+    el.style.animationDelay = '0s';
+    lines.appendChild(el);
+    fill.style.width = ((i + 1) / bootMsgs.length * 100) + '%';
+    i++;
+    setTimeout(step, 280 + Math.random() * 120);
+  }
+  step();
+})();
+
+/* ── Canvas network background ─────────────────────────────── */
+(function initCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, nodes = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* create nodes */
+  for (let i = 0; i < 55; i++) {
+    nodes.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - .5) * .35,
+      vy: (Math.random() - .5) * .35,
+      r: Math.random() * 2 + 1,
+      team: Math.random() > .5 ? 'cyan' : 'mag'
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    /* grid */
+    ctx.strokeStyle = 'rgba(0,212,255,0.03)';
+    ctx.lineWidth = 1;
+    const gs = 80;
+    for (let x = 0; x < W; x += gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    /* update + draw nodes */
+    nodes.forEach(n => {
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+
+      const color = n.team === 'cyan' ? '0,212,255' : '255,45,120';
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${color},.7)`;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = `rgba(${color},1)`;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    /* edges */
+    const DIST = 150;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < DIST) {
+          const alpha = (1 - d / DIST) * .18;
+          const color = a.team === b.team
+            ? (a.team === 'cyan' ? '0,212,255' : '255,45,120')
+            : '120,80,180';
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(${color},${alpha})`;
+          ctx.lineWidth = .6;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── Modal ─────────────────────────────────────────────────── */
+function openModal()  { document.getElementById('modal-overlay').classList.add('show'); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+function closeModalOutside(e) { if (e.target.id === 'modal-overlay') closeModal(); }
+
+/* ── Login handler → 실제 게임으로 이동 ──────────────────── */
+const GAME_URL = 'http://localhost:5173';
+
+function loginWith(provider) {
+  closeModal();
+  if (provider === 'guest') {
+    // 게스트: 게임 홈으로 바로 이동
+    window.location.href = GAME_URL;
+    return;
+  }
+  // Google / GitHub: Supabase OAuth 처리는 게임 앱 내부에서 담당
+  // 게임 홈으로 이동하면 자동으로 로그인 버튼이 표시됨
+  window.location.href = GAME_URL;
+}
+
+/* ── Intersection observer scroll reveal ───────────────────── */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: .12 });
+
+document.querySelectorAll(
+  '.ov-card, .mode-card, .step, .lb-wrap, .login-box'
+).forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(24px)';
+  el.style.transition = 'opacity .55s ease, transform .55s ease';
+  io.observe(el);
+});
+</script>
+</body>
+</html>
