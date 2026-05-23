@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(ts-node *)",
+      "Bash(tsc *)",
+      "Bash(vite *)",
+      "Bash(firebase *)",
+      "Bash(git *)",
+      "Bash(eslint *)",
+      "Bash(prettier *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$json = $input | ConvertFrom-Json; $file = $json.tool_input.file_path; if ($file -match '\\.(ts|tsx)$') { Write-Host \"[tsc] $file 타입 검사...\"; tsc --noEmit 2>&1 | ForEach-Object { Write-Host $_ } }",
+            "async": true,
+            "statusMessage": "TypeScript 타입 검사 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
