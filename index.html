@@ -932,7 +932,7 @@ function closeModal() { document.getElementById('modal-overlay').classList.remov
 function closeModalOutside(e) { if (e.target.id === 'modal-overlay') closeModal(); }
 
 /* ── Login handler → 실제 게임으로 이동 ──────────────────── */
-const GAME_URL = 'http://localhost:5173';
+const GAME_URL = 'https://key-crack-game.vercel.app';
 
 function loginWith(provider) {
   closeModal();
