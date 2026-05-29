@@ -6,13 +6,19 @@ import puzzleRouter from './routes/puzzle'
 import playerRouter from './routes/player'
 import { registerBattleHandlers } from './socket/battleHandler'
 
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://key-crack-game.vercel.app',
+]
+
 const app        = express()
 const httpServer = createServer(app)
 const io         = new Server(httpServer, {
-  cors: { origin: ['http://localhost:5173', 'http://localhost:4173'], methods: ['GET','POST'] },
+  cors: { origin: ALLOWED_ORIGINS, methods: ['GET','POST'] },
 })
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:4173'] }))
+app.use(cors({ origin: ALLOWED_ORIGINS }))
 app.use(express.json())
 
 /* API 라우트 */
