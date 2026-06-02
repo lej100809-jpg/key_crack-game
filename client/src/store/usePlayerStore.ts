@@ -35,6 +35,7 @@ interface PlayerActions {
   updateRating:   (delta: number) => void
   unlockMode:     (mode: GameMode) => void
   clearPlayer:    () => void
+  syncRankPoints: (rp: number) => void
 
   /** 랭킹 포인트 추가 + 기록 저장 */
   addRankPoints:  (rp: number, record: Omit<ScoreRecord, 'id' | 'ts'>) => void
@@ -100,6 +101,7 @@ export const usePlayerStore = create<PlayerState & PlayerActions>()(
         return { player: { ...s.player, unlockedModes: [...s.player.unlockedModes, mode] } }
       }),
       clearPlayer: () => set({ player: null, inventory: { ...DEFAULT_INVENTORY }, rankPoints: 0, scoreHistory: [] }),
+      syncRankPoints: (rp: number) => set(s => ({ rankPoints: Math.max(s.rankPoints, rp) })),
 
       // ── 랭킹 포인트 ───────────────────────────────────────
       addRankPoints: (rp, rec) => {

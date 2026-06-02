@@ -9,13 +9,14 @@ import BattleModePage from './pages/BattleModePage'
 import ChallengePage  from './pages/ChallengePage'
 import ShopPage       from './pages/ShopPage'
 import RankingPage    from './pages/RankingPage'
-import { onAuthChange, upsertPlayer } from './lib/supabase'
+import { onAuthChange, upsertPlayer, getPlayer } from './lib/supabase'
 import { usePlayerStore } from './store/usePlayerStore'
 import { useTutorialStore, selectNeedsTutorial } from './store/useTutorialStore'
 import MobileTabBar from './components/ui/MobileTabBar'
 
 export default function App() {
-  const initPlayer    = usePlayerStore(s => s.initPlayer)
+  const initPlayer      = usePlayerStore(s => s.initPlayer)
+  const syncRankPoints  = usePlayerStore(s => s.syncRankPoints)
   const player        = usePlayerStore(s => s.player)
   const needsTutorial = useTutorialStore(selectNeedsTutorial)
   const navigate      = useNavigate()
@@ -27,6 +28,9 @@ export default function App() {
       if (user) {
         initPlayer(user.id, user.name)
         upsertPlayer({ id: user.id, nickname: user.name }).catch(() => {})
+        getPlayer(user.id).then(row => {
+          if (row?.rank_points) syncRankPoints(row.rank_points)
+        }).catch(() => {})
       }
     })
     return unsub
