@@ -243,5 +243,5 @@ export function selectElapsedSec(state: PuzzleState): number {
 /** 남은 힌트 수 */
 export function selectRemainingHints(state: PuzzleState): number {
   if (!state.puzzle) return 0
-  return Math.max(0, DIFFICULTY_CONFIG[state.puzzle.difficulty].hintCount - state.hintsUsed)
+  return Math.max(0, DIFFICULTY_CONFIG[state.puzzle.difficulty].hintCount + state.bonusHints - state.hintsUsed)
 }

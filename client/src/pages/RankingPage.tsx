@@ -5,7 +5,7 @@ import RankBadge, { TierList } from '@/components/ui/RankBadge'
 import PixelIcon from '@/components/ui/PixelIcon'
 import { usePlayerStore } from '@/store/usePlayerStore'
 import { getTier, RANK_TIERS } from '@/data/rankSystem'
-import { fetchLeaderboard, isConfigured, type PlayerRow } from '@/lib/supabase'
+import { fetchLeaderboard, isConfigured, getPlayer, type PlayerRow } from '@/lib/supabase'
 type LeaderboardEntry = PlayerRow
 
 type Tab = 'my' | 'tiers' | 'history'
@@ -23,12 +23,21 @@ export default function RankingPage() {
   const [globalBoard, setGlobalBoard] = useState<LeaderboardEntry[]>([])
   const [loading,     setLoading]     = useState(false)
 
-  const player       = usePlayerStore(s => s.player)
-  const rp           = usePlayerStore(s => s.rankPoints)
-  const scoreHistory = usePlayerStore(s => s.scoreHistory)
-  const tier         = getTier(rp)
+  const player          = usePlayerStore(s => s.player)
+  const rp              = usePlayerStore(s => s.rankPoints)
+  const scoreHistory    = usePlayerStore(s => s.scoreHistory)
+  const syncRankPoints  = usePlayerStore(s => s.syncRankPoints)
+  const tier            = getTier(rp)
 
-  /* Firestore 리더보드 불러오기 */
+  /* 페이지 마운트 시 Supabase RP 동기화 (App.tsx 비동기 타이밍 보완) */
+  useEffect(() => {
+    if (!player || !isConfigured) return
+    getPlayer(player.id).then(row => {
+      if (row?.rank_points) syncRankPoints(row.rank_points)
+    }).catch(() => {})
+  }, [player?.id])
+
+  /* 리더보드 불러오기 */
   useEffect(() => {
     if (!isConfigured) return
     setLoading(true)

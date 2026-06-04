@@ -32,7 +32,6 @@ export default function TimerBar({ totalSec, onTimeUp, penaltyTrigger, penaltySe
       setRemaining(r => {
         if (r <= 1) {
           clearInterval(id)
-          if (!calledTimeUp.current) { calledTimeUp.current = true; onTimeUp() }
           return 0
         }
         return r - 1
