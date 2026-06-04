@@ -27,6 +27,7 @@ export default function PuzzleBoard({ difficulty, blindMode = false, timeLimitOv
   } = usePuzzleStore()
 
   const remainingHints = usePuzzleStore(selectRemainingHints)
+  const bonusHints     = usePuzzleStore(s => s.bonusHints)
   const cfg = DIFFICULTY_CONFIG[difficulty]
   // timeLimitOverride가 있으면 우선 적용, 없으면 난이도 기본값
   const baseSec = timeLimitOverride !== undefined ? timeLimitOverride : cfg.timeLimitSec
@@ -97,7 +98,7 @@ export default function PuzzleBoard({ difficulty, blindMode = false, timeLimitOv
             {/* 힌트 카운터 + 소모품 툴바 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.72rem', color: remainingHints > 0 ? 'var(--green)' : 'var(--tx3)' }}>
-                💡 {remainingHints}/{cfg.hintCount === 99 ? '∞' : cfg.hintCount}
+                💡 {remainingHints}/{cfg.hintCount === 99 ? '∞' : cfg.hintCount + bonusHints}
               </span>
               <ConsumableToolbar totalSec={effectiveTotalSec} />
             </div>

@@ -89,12 +89,13 @@ export async function upsertPlayer(p: { id: string; nickname: string }) {
 /** RP 증가 (Postgres RPC 사용) */
 export async function addRp(id: string, rp: number, nickname: string) {
   if (!supabase) return
-  // upsert 먼저 — 행이 없으면 생성
+  // 플레이어 행이 없을 때만 삽입 (ignoreDuplicates: true = 충돌 시 아무것도 하지 않음)
+  // rank_points: rp 로 초기화하면 기존 RP가 덮어쓰여지는 버그 발생 → 0으로 초기화
   await supabase.from('players').upsert(
-    { id, nickname, rank_points: rp },
-    { onConflict: 'id', ignoreDuplicates: false },
+    { id, nickname, rank_points: 0, coins: 0, rating: 1000 },
+    { onConflict: 'id', ignoreDuplicates: true },
   )
-  // 이미 있으면 increment
+  // 기존 RP에 원자적으로 더하기
   await supabase.rpc('increment_rp', { player_id: id, amount: rp })
 }
 
